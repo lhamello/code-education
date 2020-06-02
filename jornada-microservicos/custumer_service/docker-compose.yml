@@ -1,0 +1,42 @@
+# versão do docker-compose
+version: '3'
+
+services: 
+    # serviço de produtos
+    custumerapp:
+        build: . # utilizará o Dockerfile deste diretório
+        volumes: 
+            - ./:/var/www # tudo o que tenho na pasta local (em que estou) será montado em /var/www
+        depends_on: # só irá subir depois que os serviços abaixo tiverem subido
+            - custumerapp-mysql
+            - custumerapp-redis
+
+    # serviço do mysql
+    custumerapp-mysql:
+        image: mysql:5.7.22
+        command: --innodb-use-native-aio=0 # comando necessário para execução do mysql
+        restart: always # caso caia ficará reiniciando o tempo todo
+        ports: 
+            - "3306" # porta disponível para o mysql
+        volumes: 
+            - "./.docker/dbdata:/var/lib/mysql" # a pasta dbdata será montada em /var/lib/mysql
+        environment: 
+            MYSQL_DATABASE: custumerapp
+            MYSQL_ROOT_PASSWORD: root
+    
+    # serviço do nginx
+    custumerapp-nginx:
+        build: ./.docker/nginx
+        restart: always
+        ports: 
+            - "8002:80" # quando acessar a porta 8001 do meu computador, estarei acessando a porta 80 do container
+        volumes: 
+            - ./:/var/www
+        depends_on: 
+            - custumerapp # precisa subir após o custumerapp
+
+    # serviço do redis (banco de dados nocycle para trabalhar com cache)
+    custumerapp-redis:
+        image: redis:alpine
+        expose: 
+            - 6379 # porta padrão do redis
